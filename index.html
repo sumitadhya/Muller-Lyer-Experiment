@@ -1,0 +1,248 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Visual Perception Experiment</title>
+    <style>
+        body { 
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
+            text-align: center; 
+            background-color: #f4f4f9; 
+            color: #333;
+            padding: 20px;
+            user-select: none; /* Prevents highlighting text while dragging */
+        }
+        h1 { margin-bottom: 10px; }
+        p { color: #666; }
+        
+        #canvas-container {
+            position: relative;
+            margin: 20px auto;
+            max-width: 800px;
+            width: 100%;
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+            padding: 20px;
+            box-sizing: border-box;
+        }
+
+        canvas {
+            width: 100%;
+            height: auto;
+            border: 1px solid #ddd;
+            background-color: #fff;
+            touch-action: none; /* Critical for mobile sliding */
+        }
+
+        .controls {
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 10px;
+        }
+
+        input[type=range] {
+            width: 100%;
+            margin: 20px 0;
+            height: 25px;
+            cursor: pointer;
+        }
+
+        button {
+            background-color: #007bff;
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            font-size: 18px;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+
+        button:hover { background-color: #0056b3; }
+        
+        .hidden { display: none; }
+        
+        #progress { font-weight: bold; margin-top: 10px; color: #555; }
+    </style>
+</head>
+<body>
+
+    <div id="experiment-view">
+        <h1>Visual Perception Task</h1>
+        <p><b>Task:</b> Adjust the <u>bottom line</u> until it looks <b>exactly the same length</b> as the top line.</p>
+        
+        <div id="canvas-container">
+            <canvas id="stimulusCanvas" width="800" height="500"></canvas>
+        </div>
+
+        <div class="controls">
+            <label for="slider">Adjust Length:</label>
+            <input type="range" id="slider" min="50" max="750" step="1" value="400">
+            <br>
+            <button id="nextBtn" onclick="nextTrial()">Next Match</button>
+            <div id="progress">Trial 1 / 10</div>
+        </div>
+    </div>
+
+    <div id="end-view" class="hidden">
+        <h1>Experiment Complete!</h1>
+        <p>You have finished all trials.</p>
+        <p>Please click the button below to submit your data to the server.</p>
+        <br>
+        <button onclick="submitData()">🚀 Submit Data</button>
+    </div>
+
+    <script>
+        // --- CONFIGURATION: YOUR GOOGLE FORM IDS ---
+        // I have extracted these from the link you provided.
+        const FORM_ID = "1FAIpQLSdijIhS6lDo4jid6YE86mj5WdoZJMPATIYO12ZXZwOaCtHwvg";
+        const ENTRY_ID = "entry.2063964930";   // Corresponds to 'TEST_ID'
+        const ENTRY_DATA = "entry.1270506418"; // Corresponds to 'TEST_DATA'
+        // -------------------------------------------
+
+        // --- EXPERIMENT VARIABLES ---
+        const canvas = document.getElementById('stimulusCanvas');
+        const ctx = canvas.getContext('2d');
+        const slider = document.getElementById('slider');
+        const progressLabel = document.getElementById('progress');
+        
+        // Generate a random ID for this user (e.g., User_8492)
+        const participantID = "User_" + Math.floor(Math.random() * 10000);
+        
+        // We will run 10 trials.
+        // We vary the "Angle" of the fins (acute vs obtuse) to see if shape affects illusion strength .
+        // We also vary the Reference Length slightly so they can't memorize the position.
+        const trials = [
+            { angle: 30, refLen: 200 }, { angle: 30, refLen: 250 },
+            { angle: 45, refLen: 200 }, { angle: 45, refLen: 250 },
+            { angle: 60, refLen: 200 }, { angle: 60, refLen: 250 },
+            { angle: 120, refLen: 200 }, { angle: 120, refLen: 250 }, // Inverted fins
+            { angle: 150, refLen: 200 }, { angle: 150, refLen: 250 }
+        ];
+
+        // Shuffle trials so the order is random for every user
+        trials.sort(() => Math.random() - 0.5);
+
+        let currentTrialIndex = 0;
+        let results = []; // Stores the data
+
+        // --- DRAWING LOGIC ---
+        function drawArrow(y, length, angle, finDirection) {
+            const centerX = canvas.width / 2;
+            const startX = centerX - (length / 2);
+            const endX = centerX + (length / 2);
+            const finLength = 60; // Length of the "fins" or arrowheads
+
+            ctx.lineWidth = 4;
+            ctx.lineCap = "round";
+            ctx.strokeStyle = "black";
+            
+            ctx.beginPath();
+            
+            // 1. Draw Main Line
+            ctx.moveTo(startX, y);
+            ctx.lineTo(endX, y);
+
+            // 2. Calculate Fin Geometry
+            const rad = angle * (Math.PI / 180);
+            const dx = finLength * Math.cos(rad);
+            const dy = finLength * Math.sin(rad);
+
+            // 3. Draw Fins
+            // finDirection: 'outward' (> <) makes line look shorter
+            // finDirection: 'inward' (< >) makes line look longer
+            
+            // Note: In standard Muller-Lyer, "Outward" means fins point OUT from the line body (like an arrowhead)
+            // "Inward" means fins point IN towards the line body (like a tail)
+            
+            // Logic for Left Side
+            let leftDir = (finDirection === 'outward') ? -1 : 1; 
+            ctx.moveTo(startX, y);
+            ctx.lineTo(startX + (dx * leftDir), y - dy);
+            ctx.moveTo(startX, y);
+            ctx.lineTo(startX + (dx * leftDir), y + dy);
+
+            // Logic for Right Side
+            let rightDir = (finDirection === 'outward') ? 1 : -1;
+            ctx.moveTo(endX, y);
+            ctx.lineTo(endX + (dx * rightDir), y - dy);
+            ctx.moveTo(endX, y);
+            ctx.lineTo(endX + (dx * rightDir), y + dy);
+
+            ctx.stroke();
+        }
+
+        function render() {
+            // Clear screen
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            
+            // Safety check
+            if (currentTrialIndex >= trials.length) return;
+
+            const trial = trials[currentTrialIndex];
+
+            // 1. Draw Reference Line (Top)
+            // Standard Muller-Lyer Reference often uses "Outward" fins (>---<)
+            drawArrow(150, trial.refLen, trial.angle, 'outward');
+
+            // 2. Draw Adjustable Line (Bottom)
+            // Controlled by slider. Usually "Inward" fins (<--->)
+            const userLength = parseInt(slider.value);
+            drawArrow(350, userLength, trial.angle, 'inward');
+        }
+
+        // --- INTERACTION LOGIC ---
+        
+        slider.addEventListener('input', render);
+
+        function nextTrial() {
+            const trial = trials[currentTrialIndex];
+            const userLength = parseInt(slider.value);
+            
+            // Calculate Error %
+            // Formula: (Perceived - Actual) / Actual * 100
+            const error = ((userLength - trial.refLen) / trial.refLen) * 100;
+            
+            // Save: "Angle:Error%"
+            results.push(`${trial.angle}:${error.toFixed(1)}`);
+            
+            // Advance
+            currentTrialIndex++;
+            progressLabel.innerText = `Trial ${currentTrialIndex + 1} / ${trials.length}`;
+
+            if (currentTrialIndex < trials.length) {
+                // Reset slider to a random position to prevent cheating/muscle memory
+                slider.value = 100 + Math.random() * 400;
+                render();
+            } else {
+                endExperiment();
+            }
+        }
+
+        function endExperiment() {
+            document.getElementById('experiment-view').classList.add('hidden');
+            document.getElementById('end-view').classList.remove('hidden');
+        }
+
+        function submitData() {
+            // Format data string: "30:10.5|60:5.2|..."
+            const finalDataString = results.join("|");
+            
+            // Construct the Pre-filled Google Form URL
+            // We use 'viewform' so the user sees the filled form and clicks Submit.
+            // This is safer than background submission which often gets blocked by browsers.
+            const url = `https://docs.google.com/forms/d/e/${FORM_ID}/viewform?usp=pp_url&${ENTRY_ID}=${participantID}&${ENTRY_DATA}=${finalDataString}`;
+            
+            // Redirect user
+            window.location.href = url;
+        }
+
+        // --- START ---
+        // Initial render
+        render();
+
+    </script>
+</body>
+</html>
