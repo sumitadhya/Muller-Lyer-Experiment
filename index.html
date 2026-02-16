@@ -14,59 +14,43 @@
 </head>
 <body>
   <h2>Müller-Lyer — Single Trial</h2>
-  <div id="status">Adjust the bottom line to match the top line.</div>
+  <div id="status">Adjust the bottom line until it looks equal to the top line.</div>
   <canvas id="stimulusCanvas" width="700" height="460"></canvas>
-
   <div id="controls">
-    <input id="slider" type="range" min="50" max="650" value="200" style="width:420px"><br/><br/>
-    <button id="submitBtn">Submit (one trial)</button>
+    <input id="slider" type="range" min="50" max="650" value="200" style="width:420px">
+    <br/><br/>
+    <button id="submitBtn">Submit</button>
   </div>
 
 <script>
-  // === CONFIG: replace these with your form IDs ===
-  const FORM_ID = "1FAIpQLSdijIhS6lDo4jid6YE86mj5WdoZJMPATIYO12ZXZwOaCtHwvg";
-  const ENTRY_PID = "entry.2063964930";    // participant ID field entry ID
-  const ENTRY_DATA = "entry.1270506418";   // data field entry ID
-  // ==============================================
-
+  const FORM_ID = "YOUR_FORM_ID_HERE";
+  const ENTRY_PID = "entry.YOUR_PID_ENTRY";
+  const ENTRY_DATA = "entry.YOUR_DATA_ENTRY";
   const canvas = document.getElementById('stimulusCanvas');
   const ctx = canvas.getContext('2d');
   const slider = document.getElementById('slider');
   const submitBtn = document.getElementById('submitBtn');
   const status = document.getElementById('status');
-
-  const participantID = "User_" + Math.floor(Math.random() * 100000);
-  // single trial config
+  const participantID = "P_" + Math.floor(Math.random()*1000000);
   const trial = { angle: 45, refLen: 300 };
-  let results = null;
-
-  // randomize starting slider value around refLen
   slider.min = Math.max(20, Math.floor(trial.refLen * 0.4));
   slider.max = Math.floor(trial.refLen * 2.0);
-  slider.value = Math.floor(trial.refLen * (1 + (Math.random()*0.3 - 0.15))); // ±15%
-
-  function drawArrow(y, length, angle, finDirection) {
-    const centerX = canvas.width / 2;
-    const startX = centerX - (length / 2);
-    const endX = centerX + (length / 2);
+  slider.value = Math.floor(trial.refLen * (1 + (Math.random()*0.3 - 0.15)));
+  function drawArrow(y, length, angle, finDirection){
+    const centerX = canvas.width/2;
+    const startX = centerX - (length/2);
+    const endX = centerX + (length/2);
     const finLength = 40;
-
     ctx.lineWidth = 4;
     ctx.lineCap = "round";
     ctx.strokeStyle = "black";
-
-    // main line
     ctx.beginPath();
     ctx.moveTo(startX, y);
     ctx.lineTo(endX, y);
     ctx.stroke();
-
-    // fins
-    const rad = angle * (Math.PI / 180);
+    const rad = angle * (Math.PI/180);
     const dx = finLength * Math.cos(rad);
     const dy = finLength * Math.sin(rad);
-
-    // left fins
     let leftDir = (finDirection === 'outward') ? -1 : 1;
     ctx.beginPath();
     ctx.moveTo(startX, y);
@@ -74,8 +58,6 @@
     ctx.moveTo(startX, y);
     ctx.lineTo(startX + (dx * leftDir), y + dy);
     ctx.stroke();
-
-    // right fins
     let rightDir = (finDirection === 'outward') ? 1 : -1;
     ctx.beginPath();
     ctx.moveTo(endX, y);
@@ -84,49 +66,25 @@
     ctx.lineTo(endX + (dx * rightDir), y + dy);
     ctx.stroke();
   }
-
-  function render() {
+  function render(){
     ctx.clearRect(0,0,canvas.width,canvas.height);
-    // Reference (top): outward fins
     drawArrow(140, trial.refLen, trial.angle, 'outward');
-    // Adjustable (bottom): inward fins
-    const userLen = parseInt(slider.value, 10);
+    const userLen = parseInt(slider.value,10);
     drawArrow(320, userLen, trial.angle, 'inward');
-
-    // show current length (helpful for debugging / QC)
-    ctx.font = "16px sans-serif";
-    ctx.fillStyle = "#222";
-    ctx.fillText(`Ref: ${trial.refLen}px  —  Your length: ${userLen}px`, 12, canvas.height - 10);
   }
-
   slider.addEventListener('input', render);
-
-  // when user clicks submit, compute error and redirect to prefilled Google Form
   submitBtn.addEventListener('click', () => {
     submitBtn.disabled = true;
     slider.disabled = true;
-    status.innerText = "Submitting...";
-
-    const userLen = parseInt(slider.value, 10);
+    status.innerText = "Preparing submission...";
+    const userLen = parseInt(slider.value,10);
     const errorPct = ((userLen - trial.refLen) / trial.refLen) * 100;
-    // store result string; you can customize format
     const dataString = `angle=${trial.angle};ref=${trial.refLen};user=${userLen};err=${errorPct.toFixed(2)}`;
-
-    // URL-encode values for safe prefill
     const pidEncoded = encodeURIComponent(participantID);
     const dataEncoded = encodeURIComponent(dataString);
-
-    // prefill (viewform) link — user will see the form with data prefilled and must press Submit
     const prefillURL = `https://docs.google.com/forms/d/e/${FORM_ID}/viewform?usp=pp_url&${ENTRY_PID}=${pidEncoded}&${ENTRY_DATA}=${dataEncoded}`;
-
-    // Option A: auto-redirect user to prefilled form (they must click final "Submit")
     window.location.href = prefillURL;
-
-    // NOTE: if you prefer silent POST (auto-submit) it requires fetch to formResponse endpoint
-    // and may be blocked by CORS / Google protections. Redirect is the most reliable cross-device option.
   });
-
-  // initial render
   render();
 </script>
 </body>
