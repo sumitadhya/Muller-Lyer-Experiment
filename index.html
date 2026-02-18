@@ -67,7 +67,14 @@
                 <option value="O">Other</option>
             </select>
         </div>
-
+        <div class="form-group">
+            <label>What device are you using?</label>
+            <select id="device">
+                <option value="">Select...</option>
+                <option value="Desktop/Laptop">Desktop/Laptop</option>
+                <option value="Mobile">Mobile</option>
+            </select>
+        </div>
         <div class="form-group">
             <label>Do you wear glasses/contacts?</label>
             <select id="vision">
@@ -118,8 +125,8 @@
             // Trial Errors
             'control':   'entry.1644266009',
             'baseline':  'entry.1058461495',
-            'len_150':   'entry.1387334295',
-            'len_350':   'entry.473230365',
+            'len_200':   'entry.1387334295',
+            'len_400':   'entry.473230365',
             'thick_1px': 'entry.1255135971',
             'thick_5px': 'entry.449245928',
             'fins_2':    'entry.966390178',
@@ -154,8 +161,8 @@
             // 3. RANDOMIZED POOL
             let pool = [
                 // Length Variations
-                { id: 'len_150',   type: 'match', refLen: 200, lw: 3, fins: 1, angle: 45 },
-                { id: 'len_350',   type: 'match', refLen: 400, lw: 3, fins: 1, angle: 45 },
+                { id: 'len_200',   type: 'match', refLen: 200, lw: 3, fins: 1, angle: 45 },
+                { id: 'len_400',   type: 'match', refLen: 400, lw: 3, fins: 1, angle: 45 },
                 // Thickness Variations
                 { id: 'thick_1px', type: 'match', refLen: 300, lw: 1, fins: 1, angle: 45 },
                 { id: 'thick_5px', type: 'match', refLen: 300, lw: 5, fins: 1, angle: 45 },
@@ -180,10 +187,11 @@
             const name = document.getElementById('fullname').value.trim();
             const age = document.getElementById('age').value;
             const gender = document.getElementById('gender').value;
+            const device = document.getElementById('device').value; // Get value from the new dropdown
             const vision = document.getElementById('vision').value;
 
-            if (!name || !age || !gender) {
-                alert("Please fill in Name, Age, and Gender.");
+            if (!name || !age || !gender || !device) {
+                alert("Please fill in all fields, including the device you are using.");
                 return;
             }
 
@@ -196,6 +204,7 @@
                 'Name': name,
                 'Age': age,
                 'Gender': gender,
+                'Device': device, // Save it here
                 'Vision': vision
             };
 
