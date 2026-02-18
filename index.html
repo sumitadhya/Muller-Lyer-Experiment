@@ -1,91 +1,211 @@
-<!doctype html>
-<html>
+<!DOCTYPE html>
+<html lang="en">
 <head>
-  <meta charset="utf-8" />
-  <title>Müller-Lyer — Single Trial</title>
-  <style>
-    body{font-family:sans-serif;text-align:center;background:#f7f7f7;padding:20px}
-    canvas{background:white;border:1px solid #ccc;display:block;margin:12px auto}
-    #controls{margin-top:12px}
-    button{padding:10px 14px;font-size:16px;border-radius:6px;border:0;background:#007bff;color:#fff;cursor:pointer}
-    button:disabled{background:#9bbff0;cursor:default}
-    #status{font-weight:600;margin-bottom:6px}
-  </style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Visual Perception Experiment</title>
+    <style>
+        body { 
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
+            text-align: center; 
+            background-color: #f4f4f9; 
+            padding: 20px;
+            user-select: none;
+        }
+        #canvas-container {
+            position: relative;
+            margin: 20px auto;
+            max-width: 800px;
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+            padding: 20px;
+        }
+        canvas { width: 100%; height: auto; border: 1px solid #ddd; touch-action: none; }
+        .controls { max-width: 600px; margin: 0 auto; }
+        input[type=range] { width: 100%; margin: 20px 0; height: 25px; cursor: pointer; }
+        button {
+            background-color: #007bff; color: white; border: none; padding: 15px 30px;
+            font-size: 18px; border-radius: 5px; cursor: pointer; transition: background 0.2s;
+        }
+        button:hover { background-color: #0056b3; }
+        .hidden { display: none; }
+        #progress { font-weight: bold; margin-top: 10px; color: #555; }
+    </style>
 </head>
 <body>
-  <h2>Müller-Lyer — Single Trial</h2>
-  <div id="status">Adjust the bottom line until it looks equal to the top line.</div>
-  <canvas id="stimulusCanvas" width="700" height="460"></canvas>
-  <div id="controls">
-    <input id="slider" type="range" min="50" max="650" value="200" style="width:420px">
-    <br/><br/>
-    <button id="submitBtn">Submit</button>
-  </div>
 
-<script>
-  const FORM_ID = "1FAIpQLSdijIhS6lDo4jid6YE86mj5WdoZJMPATIYO12ZXZwOaCtHwvg";
-  const ENTRY_PID = "entry.2063964930";
-  const ENTRY_DATA = "entry.1270506418";
-  const canvas = document.getElementById('stimulusCanvas');
-  const ctx = canvas.getContext('2d');
-  const slider = document.getElementById('slider');
-  const submitBtn = document.getElementById('submitBtn');
-  const status = document.getElementById('status');
-  const participantID = "P_" + Math.floor(Math.random()*1000000);
-  const trial = { angle: 45, refLen: 300 };
-  slider.min = Math.max(20, Math.floor(trial.refLen * 0.4));
-  slider.max = Math.floor(trial.refLen * 2.0);
-  slider.value = Math.floor(trial.refLen * (1 + (Math.random()*0.3 - 0.15)));
-  function drawArrow(y, length, angle, finDirection){
-    const centerX = canvas.width/2;
-    const startX = centerX - (length/2);
-    const endX = centerX + (length/2);
-    const finLength = 40;
-    ctx.lineWidth = 4;
-    ctx.lineCap = "round";
-    ctx.strokeStyle = "black";
-    ctx.beginPath();
-    ctx.moveTo(startX, y);
-    ctx.lineTo(endX, y);
-    ctx.stroke();
-    const rad = angle * (Math.PI/180);
-    const dx = finLength * Math.cos(rad);
-    const dy = finLength * Math.sin(rad);
-    let leftDir = (finDirection === 'outward') ? -1 : 1;
-    ctx.beginPath();
-    ctx.moveTo(startX, y);
-    ctx.lineTo(startX + (dx * leftDir), y - dy);
-    ctx.moveTo(startX, y);
-    ctx.lineTo(startX + (dx * leftDir), y + dy);
-    ctx.stroke();
-    let rightDir = (finDirection === 'outward') ? 1 : -1;
-    ctx.beginPath();
-    ctx.moveTo(endX, y);
-    ctx.lineTo(endX + (dx * rightDir), y - dy);
-    ctx.moveTo(endX, y);
-    ctx.lineTo(endX + (dx * rightDir), y + dy);
-    ctx.stroke();
-  }
-  function render(){
-    ctx.clearRect(0,0,canvas.width,canvas.height);
-    drawArrow(140, trial.refLen, trial.angle, 'outward');
-    const userLen = parseInt(slider.value,10);
-    drawArrow(320, userLen, trial.angle, 'inward');
-  }
-  slider.addEventListener('input', render);
-  submitBtn.addEventListener('click', () => {
-    submitBtn.disabled = true;
-    slider.disabled = true;
-    status.innerText = "Preparing submission...";
-    const userLen = parseInt(slider.value,10);
-    const errorPct = ((userLen - trial.refLen) / trial.refLen) * 100;
-    const dataString = `angle=${trial.angle};ref=${trial.refLen};user=${userLen};err=${errorPct.toFixed(2)}`;
-    const pidEncoded = encodeURIComponent(participantID);
-    const dataEncoded = encodeURIComponent(dataString);
-    const prefillURL = `https://docs.google.com/forms/d/e/${FORM_ID}/viewform?usp=pp_url&${ENTRY_PID}=${pidEncoded}&${ENTRY_DATA}=${dataEncoded}`;
-    window.location.href = prefillURL;
-  });
-  render();
-</script>
+    <div id="experiment-view">
+        <h1>Visual Perception Task</h1>
+        <p>Adjust the <b>bottom line</b> to match the length of the <b>top line</b>.</p>
+        
+        <div id="canvas-container">
+            <canvas id="stimulusCanvas" width="800" height="500"></canvas>
+        </div>
+
+        <div class="controls">
+            <input type="range" id="slider" min="50" max="750" step="1" value="400">
+            <br>
+            <button onclick="nextTrial()">Submit Match</button>
+            <div id="progress">Trial 1 / 9</div>
+        </div>
+    </div>
+
+    <div id="end-view" class="hidden">
+        <h1>Experiment Complete!</h1>
+        <p>Click below to submit your data.</p>
+        <button onclick="submitData()">🚀 Submit Data</button>
+    </div>
+
+    <script>
+        // --- CONFIGURATION ---
+        const FORM_ID = "1FAIpQLSdijIhS6lDo4jid6YE86mj5WdoZJMPATIYO12ZXZwOaCtHwvg";
+        const ENTRY_ID = "entry.2063964930";   
+        const ENTRY_DATA = "entry.1270506418"; 
+
+        const canvas = document.getElementById('stimulusCanvas');
+        const ctx = canvas.getContext('2d');
+        const slider = document.getElementById('slider');
+        const progressLabel = document.getElementById('progress');
+        
+        const participantID = "User_" + Math.floor(Math.random() * 10000);
+        let results = [];
+        let currentTrialIndex = 0;
+
+        // --- EXPERIMENTAL DESIGN  ---
+        // We compare everything against a "Standard" baseline (Len:250, Thick:3, Fins:1, Angle:45)
+        const trials = [
+            // 1. VARY LENGTH (Size)
+            { id: 'len_150', refLen: 150, lw: 3, fins: 1, angle: 45 },
+            { id: 'len_250', refLen: 250, lw: 3, fins: 1, angle: 45 }, // Baseline
+            { id: 'len_350', refLen: 350, lw: 3, fins: 1, angle: 45 },
+
+            // 2. VARY THICKNESS
+            { id: 'thick_1px', refLen: 250, lw: 1, fins: 1, angle: 45 }, // Thin
+            { id: 'thick_5px', refLen: 250, lw: 5, fins: 1, angle: 45 }, // Thick
+
+            // 3. VARY NUMBER OF LINES (Double Fins)
+            { id: 'fins_2',   refLen: 250, lw: 3, fins: 2, angle: 45 },
+
+            // 4. VARY SHAPE (Angle)
+            { id: 'ang_30',   refLen: 250, lw: 3, fins: 1, angle: 30 },  // Acute
+            { id: 'ang_150',  refLen: 250, lw: 3, fins: 1, angle: 150 }, // Obtuse
+
+            // 5. CONTROL (No Fins)
+            { id: 'control',  refLen: 250, lw: 3, fins: 0, angle: 0 }
+        ];
+
+        // Shuffle trials to prevent order effects
+        trials.sort(() => Math.random() - 0.5);
+
+        function drawArrow(y, length, trial, isInward) {
+            const cx = canvas.width / 2;
+            const startX = cx - (length / 2);
+            const endX = cx + (length / 2);
+            const finLen = 50; 
+
+            ctx.lineWidth = trial.lw;
+            ctx.lineCap = "round";
+            ctx.strokeStyle = "black";
+            
+            // Draw Main Line
+            ctx.beginPath();
+            ctx.moveTo(startX, y);
+            ctx.lineTo(endX, y);
+            ctx.stroke();
+
+            // Draw Fins (if not control trial)
+            if (trial.fins > 0) {
+                const rad = trial.angle * (Math.PI / 180);
+                const dx = finLen * Math.cos(rad);
+                const dy = finLen * Math.sin(rad);
+
+                // Helper to draw a single fin set
+                const drawFinSet = (offset) => {
+                    const sx = startX + offset; // Shift x for double fins
+                    const ex = endX - offset;
+
+                    // Left Side
+                    let lDir = isInward ? 1 : -1; // Inward points IN (><), Outward points OUT (<>)
+                    // Note: Standard Muller-Lyer naming is tricky. 
+                    // "Inward pointing" usually means arrows point IN towards the line body (< >) -> Looks LONGER
+                    // "Outward pointing" usually means arrows point OUT away from line (> <) -> Looks SHORTER
+                    
+                    // Let's stick to visual logic:
+                    // If 'isInward' (Target/Bottom): Fins point like <---> (Tail)
+                    // If 'Outward' (Ref/Top): Fins point like >---< (Arrowhead)
+
+                    let dir = isInward ? 1 : -1; 
+
+                    ctx.beginPath();
+                    // Left
+                    ctx.moveTo(sx, y);
+                    ctx.lineTo(sx + (dx * -dir), y - dy);
+                    ctx.moveTo(sx, y);
+                    ctx.lineTo(sx + (dx * -dir), y + dy);
+                    // Right
+                    ctx.moveTo(ex, y);
+                    ctx.lineTo(ex + (dx * dir), y - dy);
+                    ctx.moveTo(ex, y);
+                    ctx.lineTo(ex + (dx * dir), y + dy);
+                    ctx.stroke();
+                };
+
+                // Draw first set
+                drawFinSet(0);
+
+                // Draw second set if "Double Fins"
+                if (trial.fins === 2) {
+                    drawFinSet(20); // 20px offset for second arrowhead
+                }
+            }
+        }
+
+        function render() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            const trial = trials[currentTrialIndex];
+
+            // Reference (Top): "Outward" fins (> <) -> Looks Shorter
+            drawArrow(150, trial.refLen, trial, false);
+
+            // Adjustable (Bottom): "Inward" fins (< >) -> Looks Longer
+            const userLen = parseInt(slider.value);
+            drawArrow(350, userLen, trial, true);
+        }
+
+        window.nextTrial = function() {
+            const trial = trials[currentTrialIndex];
+            const userLen = parseInt(slider.value);
+            
+            // Calculate Error %
+            const error = ((userLen - trial.refLen) / trial.refLen) * 100;
+            
+            // Save: "ConditionID:Error"
+            results.push(`${trial.id}:${error.toFixed(1)}`);
+            
+            currentTrialIndex++;
+            progressLabel.innerText = `Trial ${currentTrialIndex + 1} / ${trials.length}`;
+
+            if (currentTrialIndex < trials.length) {
+                // Randomize start position
+                slider.value = trial.refLen * (0.8 + Math.random() * 0.4); 
+                render();
+            } else {
+                document.getElementById('experiment-view').classList.add('hidden');
+                document.getElementById('end-view').classList.remove('hidden');
+            }
+        };
+
+        window.submitData = function() {
+            const dataStr = results.join("|");
+            const url = `https://docs.google.com/forms/d/e/${FORM_ID}/viewform?usp=pp_url&${ENTRY_ID}=${participantID}&${ENTRY_DATA}=${dataStr}`;
+            window.location.href = url;
+        };
+
+        slider.addEventListener('input', render);
+        
+        // Initial Render
+        render();
+    </script>
 </body>
 </html>
