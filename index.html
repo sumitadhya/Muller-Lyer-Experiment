@@ -102,12 +102,33 @@
     </div>
 
     <script>
-        // --- CONFIGURATION ---
+        // ==========================================
+        // CONFIGURATION: GOOGLE FORM IDs
+        // ==========================================
         const FORM_ID = "1FAIpQLSdijIhS6lDo4jid6YE86mj5WdoZJMPATIYO12ZXZwOaCtHwvg";
-        const ENTRY_ID = "entry.2063964930";   
-        const ENTRY_DATA = "entry.1270506418"; 
+        
+        const FIELD_IDS = {
+            // Demographics
+            'UserID':    'entry.339043380',
+            'Name':      'entry.1879181318',
+            'Age':       'entry.2026698951',
+            'Gender':    'entry.1653629598',
+            'Vision':    'entry.997778295',
 
-        // --- GLOBAL VARIABLES ---
+            // Trial Errors
+            'control':   'entry.1644266009',
+            'baseline':  'entry.1058461495',
+            'len_150':   'entry.1387334295',
+            'len_350':   'entry.473230365',
+            'thick_1px': 'entry.1255135971',
+            'thick_5px': 'entry.449245928',
+            'fins_2':    'entry.966390178',
+            'ang_30':    'entry.1164651863',
+            'ang_150':   'entry.635217377',
+            'brentano':  'entry.912805463'
+        };
+        // ==========================================
+
         const canvas = document.getElementById('stimulusCanvas');
         const ctx = canvas.getContext('2d');
         const slider = document.getElementById('slider');
@@ -117,7 +138,8 @@
         const taskTitle = document.getElementById('task-title');
         
         let participantID = ""; 
-        let results = [];
+        let userData = {}; 
+        let trialResults = {}; 
         let currentTrialIndex = 0;
         let trials = [];
 
@@ -165,14 +187,18 @@
                 return;
             }
 
-            // 1. Generate Random User ID (e.g., P84920) for the Form ID field
-            participantID = "P" + Math.floor(Math.random() * 100000);
+            // Generate ID: Name_RandomNumber (e.g., Sumit_93821)
+            const safeName = name.replace(/\s+/g, '_');
+            participantID = safeName + "_" + Math.floor(Math.random() * 100000);
 
-            // 2. Save Name inside the data string
-            results.push(`Name:${name}`);
-            results.push(`Age:${age}`);
-            results.push(`Gen:${gender}`);
-            results.push(`Vis:${vision}`);
+            // Save demographics
+            userData = {
+                'UserID': participantID,
+                'Name': name,
+                'Age': age,
+                'Gender': gender,
+                'Vision': vision
+            };
 
             generateTrials();
             
@@ -194,7 +220,7 @@
                 slider.min = 0;
                 slider.max = 1000;
                 
-                // FORCE BAD START: Far Left (200) or Far Right (800)
+                // Force bad start (Left or Right side)
                 slider.value = Math.random() > 0.5 ? 200 : 800; 
 
             } else {
@@ -204,8 +230,7 @@
                 slider.min = 50;
                 slider.max = 750;
                 
-                // FORCE BAD START: Start very short (0.5x) or very long (1.5x)
-                // This ensures they MUST move the slider.
+                // Force bad start (50% or 150% of target)
                 const multiplier = Math.random() > 0.5 ? 0.5 : 1.5;
                 slider.value = trial.refLen * multiplier;
             }
@@ -331,7 +356,8 @@
                 error = ((userLen - trial.refLen) / trial.refLen) * 100;
             }
 
-            results.push(`${trial.id}:${error.toFixed(2)}`);
+            // Store result
+            trialResults[trial.id] = error.toFixed(2);
             
             currentTrialIndex++;
 
@@ -344,10 +370,25 @@
         };
 
         window.submitData = function() {
-            const dataStr = results.join("|");
-            // entry.2063964930 = Participant ID (P12345)
-            // entry.1270506418 = Data String (Name, Age, Trials...)
-            const url = `https://docs.google.com/forms/d/e/${FORM_ID}/viewform?usp=pp_url&${ENTRY_ID}=${participantID}&${ENTRY_DATA}=${dataStr}`;
+            // Build the URL based on the FIELD_IDS map
+            let params = [];
+            
+            // Add Demographics
+            for (let key in userData) {
+                if (FIELD_IDS[key]) {
+                    params.push(`${FIELD_IDS[key]}=${encodeURIComponent(userData[key])}`);
+                }
+            }
+            
+            // Add Trial Results
+            for (let key in trialResults) {
+                if (FIELD_IDS[key]) {
+                    params.push(`${FIELD_IDS[key]}=${encodeURIComponent(trialResults[key])}`);
+                }
+            }
+
+            const queryString = params.join("&");
+            const url = `https://docs.google.com/forms/d/e/${FORM_ID}/viewform?usp=pp_url&${queryString}`;
             window.location.href = url;
         };
 
