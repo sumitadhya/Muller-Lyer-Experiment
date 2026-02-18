@@ -22,7 +22,7 @@
             padding: 30px;
         }
         canvas { width: 100%; height: auto; border: 1px solid #ddd; touch-action: none; margin-top: 10px; }
-        input[type=range] { width: 80%; margin: 30px 0; height: 25px; cursor: pointer; }
+        input[type=range] { width: 80%; margin: 20px 0; height: 25px; cursor: pointer; }
         
         /* Form Styling */
         .form-group { margin: 15px 0; text-align: left; max-width: 400px; margin-left: auto; margin-right: auto; }
@@ -37,15 +37,15 @@
         
         .hidden { display: none; }
         #progress { font-weight: bold; margin-top: 10px; color: #555; }
-        .instruction { color: #444; font-size: 1.1em; margin-bottom: 15px; font-weight: 500; }
-        #task-title { color: #007bff; margin-bottom: 10px; }
+        .instruction { color: #666; font-size: 1.1em; margin-bottom: 15px; min-height: 1.5em; }
+        h2 { margin-top: 0; }
     </style>
 </head>
 <body>
 
     <div id="start-view" class="container">
         <h1>Visual Perception Study</h1>
-        <p>Please tell us a little about yourself.</p>
+        <p>Please answer a few questions before we begin.</p>
         
         <div class="form-group">
             <label>Age:</label>
@@ -76,10 +76,10 @@
     </div>
 
     <div id="experiment-view" class="container hidden">
-        <h2 id="task-title">Task: Find the Middle</h2>
-        <p class="instruction">Adjust the slider to place the <b>middle arrow</b> exactly halfway between the two outer arrows.</p>
+        <h2 id="task-title">Task</h2>
+        <p id="instruction-text" class="instruction">Loading...</p>
         
-        <canvas id="stimulusCanvas" width="800" height="400"></canvas>
+        <canvas id="stimulusCanvas" width="800" height="500"></canvas>
 
         <div>
             <input type="range" id="slider" min="0" max="1000" step="1" value="500">
@@ -92,13 +92,13 @@
     <div id="end-view" class="container hidden">
         <h1>All Done!</h1>
         <p>Thank you for participating.</p>
+        <p>Please click below to submit your results.</p>
         <button onclick="submitData()">🚀 Submit Data</button>
     </div>
 
     <script>
         // --- CONFIGURATION ---
-        // Your specific Google Form IDs are inserted here:
-        const FORM_ID = "1FAIpQLSdijIhS6lDo4jid6YE86mj5WdoZJMPATIYO12ZXZwOaCtHwvg"; 
+        const FORM_ID = "1FAIpQLSdijIhS6lDo4jid6YE86mj5WdoZJMPATIYO12ZXZwOaCtHwvg";
         const ENTRY_ID = "entry.2063964930";   
         const ENTRY_DATA = "entry.1270506418"; 
 
@@ -108,6 +108,8 @@
         const slider = document.getElementById('slider');
         const actionBtn = document.getElementById('actionBtn');
         const progressLabel = document.getElementById('progress');
+        const instructionText = document.getElementById('instruction-text');
+        const taskTitle = document.getElementById('task-title');
         
         const participantID = "P" + Math.floor(Math.random() * 100000); 
         let results = [];
@@ -116,31 +118,48 @@
 
         // --- SETUP TRIALS ---
         function generateTrials() {
-            // 1. Control Trial (Plain line, angle 0)
-            const t1 = { id: 'control', totalLen: 600, angle: 0 };
+            // 1. FIXED: Control Trial (Always First)
+            const t1 = { id: 'control', type: 'match', refLen: 250, lw: 3, fins: 0, angle: 0 };
             
-            // 2. Standard Baseline (Length 600, Angle 45)
-            const t2 = { id: 'base_600_45', totalLen: 600, angle: 45 };
+            // 2. FIXED: Baseline Standard (Always Second)
+            const t2 = { id: 'baseline', type: 'match', refLen: 250, lw: 3, fins: 1, angle: 45 };
 
-            // 3. Randomized Variations
+            // 3. RANDOMIZED POOL
             let pool = [
-                { id: 'len_400_45', totalLen: 400, angle: 45 }, // Shorter overall
-                { id: 'len_700_45', totalLen: 700, angle: 45 }, // Longer overall
-                { id: 'ang_30',     totalLen: 600, angle: 30 }, // Sharper angles
-                { id: 'ang_150',    totalLen: 600, angle: 150 } // Blunter angles
+                // Length Variations
+                { id: 'len_150',   type: 'match', refLen: 150, lw: 3, fins: 1, angle: 45 },
+                { id: 'len_350',   type: 'match', refLen: 350, lw: 3, fins: 1, angle: 45 },
+                // Thickness Variations
+                { id: 'thick_1px', type: 'match', refLen: 250, lw: 1, fins: 1, angle: 45 },
+                { id: 'thick_5px', type: 'match', refLen: 250, lw: 5, fins: 1, angle: 45 },
+                // Double Fins
+                { id: 'fins_2',    type: 'match', refLen: 250, lw: 3, fins: 2, angle: 45 },
+                // Shape (Angle) Variations
+                { id: 'ang_30',    type: 'match', refLen: 250, lw: 3, fins: 1, angle: 30 },
+                { id: 'ang_150',   type: 'match', refLen: 250, lw: 3, fins: 1, angle: 150 },
+                // --- BRENTANO TRIAL (Added to Pool) ---
+                { id: 'brentano',  type: 'midpoint', totalLen: 600, lw: 3, angle: 45 }
             ];
 
+            // Shuffle the pool
             pool.sort(() => Math.random() - 0.5);
+
+            // Combine: Control -> Baseline -> Shuffled Rest
             trials = [t1, t2, ...pool];
         }
 
+        // --- STATE MANAGEMENT ---
         function startExperiment() {
             const age = document.getElementById('age').value;
             const gender = document.getElementById('gender').value;
             const vision = document.getElementById('vision').value;
 
-            if (!age || !gender) { alert("Please fill in Age and Gender."); return; }
+            if (!age || !gender) {
+                alert("Please fill in Age and Gender.");
+                return;
+            }
 
+            // Save demographics
             results.push(`Age:${age}`);
             results.push(`Gen:${gender}`);
             results.push(`Vis:${vision}`);
@@ -154,11 +173,28 @@
         }
 
         function setupTrialUI() {
-            // Randomize slider start position (avoid dead center)
-            slider.value = Math.floor(Math.random() * 600) + 200;
-
+            const trial = trials[currentTrialIndex];
+            
+            // UI Text Updates
             progressLabel.innerText = `Trial ${currentTrialIndex + 1} / ${trials.length}`;
             
+            if (trial.type === 'midpoint') {
+                taskTitle.innerText = "Task: Find the Center";
+                instructionText.innerHTML = "Adjust the slider to place the <b>middle arrow</b> exactly halfway between the two outer arrows.";
+                slider.min = 0;
+                slider.max = 1000;
+                // Randomize start (avoid dead center 500)
+                slider.value = Math.random() > 0.5 ? 300 : 700;
+            } else {
+                taskTitle.innerText = "Task: Match Length";
+                instructionText.innerHTML = "Drag the slider until the <b>bottom line</b> looks exactly as long as the <b>top line</b>.";
+                slider.min = 50;
+                slider.max = 750;
+                // Randomize start (avoid correct answer)
+                slider.value = trial.refLen * (0.8 + Math.random() * 0.4);
+            }
+
+            // Button styling
             if (currentTrialIndex === trials.length - 1) {
                 actionBtn.innerText = "Finish";
                 actionBtn.style.backgroundColor = "#28a745"; 
@@ -166,85 +202,148 @@
                 actionBtn.innerText = "Next";
                 actionBtn.style.backgroundColor = "#007bff"; 
             }
+
             render();
         }
 
-        // --- DRAWING LOGIC (BRENTANO ILLUSION) ---
-        function drawFin(x, y, angle, lw, pointingDirection) {
+        // --- DRAWING LOGIC ---
+        function drawFin(x, y, angle, lw, direction) {
             const finLen = 50;
             const rad = angle * (Math.PI / 180);
             const dx = finLen * Math.cos(rad);
             const dy = finLen * Math.sin(rad);
-
-            // pointingDirection: 'left' (<) or 'right' (>)
-            // 'right' means vertex is at X, open part is to the left? No.
-            // Let's use standard arrow naming:
-            // > points right. < points left.
             
-            const dirMult = (pointingDirection === 'right') ? -1 : 1;
+            // direction: 1 (point right >), -1 (point left <)
+            // Note: In typical math, right is positive x. 
+            // If we want > (vertex left, open right), we move +dx from vertex? No, standard fin is drawn from tip.
+            // Let's stick to the visual: > points RIGHT. < points LEFT.
+            
+            // In the code below:
+            // if direction = -1 (Left), we draw to x + dx.
+            // if direction = 1 (Right), we draw to x - dx.
+
+            const dirMult = (direction === 'right') ? -1 : 1;
 
             ctx.beginPath();
             ctx.lineWidth = lw;
             ctx.lineCap = "round";
-            // Top part
+            ctx.strokeStyle = "black"; // All arrows black
+            
             ctx.moveTo(x, y);
             ctx.lineTo(x + (dx * dirMult), y - dy);
-            // Bottom part
             ctx.moveTo(x, y);
             ctx.lineTo(x + (dx * dirMult), y + dy);
             ctx.stroke();
         }
 
-        function render() {
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
-            const trial = trials[currentTrialIndex];
-            const cy = canvas.height / 2;
+        function drawMatchTrial(trial) {
             const cx = canvas.width / 2;
+            
+            // -- Helper for Length Match Lines --
+            const drawLineWithFins = (y, len, isInward) => {
+                const startX = cx - (len / 2);
+                const endX = cx + (len / 2);
+                
+                ctx.lineWidth = trial.lw;
+                ctx.strokeStyle = "black";
+                ctx.beginPath();
+                ctx.moveTo(startX, y);
+                ctx.lineTo(endX, y);
+                ctx.stroke();
 
-            // Calculate endpoints
+                if (trial.fins > 0) {
+                    // Inward (< >) vs Outward (> <)
+                    // Inward: Left fin points Right (>), Right fin points Left (<) ... Wait, that's >< (Outward visual)
+                    // Let's stick to the prompt's established visual:
+                    // "Inward" (Bottom): <---> (Fins point IN to center? No, Tails). 
+                    // Let's use the explicit logic from before:
+                    // isInward (Bottom, Target): < ... > (Tails) -> Looks Longer
+                    // isOutward (Top, Ref): > ... < (Heads) -> Looks Shorter
+
+                    // Left Fin Direction: 
+                    // If Inward/Tail (<): Points Left ('left')
+                    // If Outward/Head (>): Points Right ('right')
+                    const leftDir = isInward ? 'left' : 'right';
+                    const rightDir = isInward ? 'right' : 'left';
+
+                    drawFin(startX, y, trial.angle, trial.lw, leftDir);
+                    drawFin(endX, y, trial.angle, trial.lw, rightDir);
+
+                    if (trial.fins === 2) {
+                        // Double fins offset
+                        const offset = 20;
+                        drawFin(startX + (isInward?-offset:offset), y, trial.angle, trial.lw, leftDir);
+                        drawFin(endX + (isInward?offset:-offset), y, trial.angle, trial.lw, rightDir);
+                    }
+                }
+            };
+
+            // Top (Reference): Outward (> <)
+            drawLineWithFins(150, trial.refLen, false);
+            // Bottom (User): Inward (< >)
+            const userLen = parseInt(slider.value);
+            drawLineWithFins(350, userLen, true);
+        }
+
+        function drawBrentanoTrial(trial) {
+            const cx = canvas.width / 2;
+            const cy = canvas.height / 2;
             const startX = cx - (trial.totalLen / 2);
             const endX = cx + (trial.totalLen / 2);
 
+            ctx.lineWidth = trial.lw;
             ctx.strokeStyle = "black";
-            ctx.lineWidth = 4;
-
-            // 1. Draw the main horizontal line
+            
+            // Main Line
             ctx.beginPath();
             ctx.moveTo(startX, cy);
             ctx.lineTo(endX, cy);
             ctx.stroke();
 
-            // Skip fins for control trial (Angle 0)
-            if (trial.angle > 0) {
-                // Configuration: >-------<------->
-                // Left Fin: > (Points Right)
-                drawFin(startX, cy, trial.angle, 4, 'right');
+            // Fixed Ends: > ... > (Both point Right)
+            // Left: > (Points Right)
+            drawFin(startX, cy, trial.angle, trial.lw, 'right');
+            // Right: > (Points Right)
+            drawFin(endX, cy, trial.angle, trial.lw, 'right');
 
-                // Right Fin: > (Points Right)
-                drawFin(endX, cy, trial.angle, 4, 'right');
+            // Moving Middle: < (Points Left)
+            // Map slider (0-1000) to position
+            const pct = slider.value / 1000;
+            const middleX = startX + (pct * trial.totalLen);
+            
+            drawFin(middleX, cy, trial.angle, trial.lw, 'left');
+        }
 
-                // Middle Moveable Fin: < (Points Left)
-                // Map slider (0-1000) to physical position
-                const sliderPct = slider.value / 1000;
-                const middleX = startX + (sliderPct * trial.totalLen);
-                
-                // Draw middle fin Blue
-                ctx.strokeStyle = "#007bff";
-                drawFin(middleX, cy, trial.angle, 5, 'left');
+        function render() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            const trial = trials[currentTrialIndex];
+
+            if (trial.type === 'midpoint') {
+                drawBrentanoTrial(trial);
+            } else {
+                drawMatchTrial(trial);
             }
         }
 
         // --- INTERACTION ---
         window.nextTrial = function() {
             const trial = trials[currentTrialIndex];
-            
-            // Calculate Error %
-            // Slider center is 500. Error is deviation from 500.
-            const rawVal = parseInt(slider.value);
-            const errorPct = ((rawVal - 500) / 1000) * 100; 
-            
-            results.push(`${trial.id}:${errorPct.toFixed(2)}`);
+            let error;
 
+            if (trial.type === 'midpoint') {
+                // Positional Error (Deviation from center 500)
+                // 0 is start, 1000 is end. 500 is mid.
+                const val = parseInt(slider.value);
+                // % Error of total length
+                error = ((val - 500) / 1000) * 100;
+            } else {
+                // Length Error
+                const userLen = parseInt(slider.value);
+                error = ((userLen - trial.refLen) / trial.refLen) * 100;
+            }
+
+            results.push(`${trial.id}:${error.toFixed(2)}`);
+            
             currentTrialIndex++;
 
             if (currentTrialIndex < trials.length) {
@@ -257,6 +356,7 @@
 
         window.submitData = function() {
             const dataStr = results.join("|");
+            // Pre-fill Google Form URL
             const url = `https://docs.google.com/forms/d/e/${FORM_ID}/viewform?usp=pp_url&${ENTRY_ID}=${participantID}&${ENTRY_DATA}=${dataStr}`;
             window.location.href = url;
         };
