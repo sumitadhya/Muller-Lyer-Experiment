@@ -146,24 +146,24 @@
         // --- SETUP TRIALS ---
         function generateTrials() {
             // 1. FIXED: Control Trial
-            const t1 = { id: 'control', type: 'match', refLen: 250, lw: 3, fins: 0, angle: 0 };
+            const t1 = { id: 'control', type: 'match', refLen: 300, lw: 3, fins: 0, angle: 0 };
             
             // 2. FIXED: Baseline Standard
-            const t2 = { id: 'baseline', type: 'match', refLen: 250, lw: 3, fins: 1, angle: 45 };
+            const t2 = { id: 'baseline', type: 'match', refLen: 300, lw: 3, fins: 1, angle: 45 };
 
             // 3. RANDOMIZED POOL
             let pool = [
                 // Length Variations
-                { id: 'len_150',   type: 'match', refLen: 150, lw: 3, fins: 1, angle: 45 },
-                { id: 'len_350',   type: 'match', refLen: 350, lw: 3, fins: 1, angle: 45 },
+                { id: 'len_150',   type: 'match', refLen: 200, lw: 3, fins: 1, angle: 45 },
+                { id: 'len_350',   type: 'match', refLen: 400, lw: 3, fins: 1, angle: 45 },
                 // Thickness Variations
-                { id: 'thick_1px', type: 'match', refLen: 250, lw: 1, fins: 1, angle: 45 },
-                { id: 'thick_5px', type: 'match', refLen: 250, lw: 5, fins: 1, angle: 45 },
+                { id: 'thick_1px', type: 'match', refLen: 300, lw: 1, fins: 1, angle: 45 },
+                { id: 'thick_5px', type: 'match', refLen: 300, lw: 5, fins: 1, angle: 45 },
                 // Double Fins
-                { id: 'fins_2',    type: 'match', refLen: 250, lw: 3, fins: 2, angle: 45 },
+                { id: 'fins_2',    type: 'match', refLen: 300, lw: 3, fins: 2, angle: 45 },
                 // Shape (Angle) Variations
-                { id: 'ang_30',    type: 'match', refLen: 250, lw: 3, fins: 1, angle: 30 },
-                { id: 'ang_150',   type: 'match', refLen: 250, lw: 3, fins: 1, angle: 150 },
+                { id: 'ang_30',    type: 'match', refLen: 300, lw: 3, fins: 1, angle: 30 },
+                { id: 'ang_150',   type: 'match', refLen: 300, lw: 3, fins: 1, angle: 150 },
                 // Brentano Trial
                 { id: 'brentano',  type: 'midpoint', totalLen: 600, lw: 3, angle: 45 }
             ];
