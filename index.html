@@ -11,49 +11,87 @@
             background-color: #f4f4f9; 
             padding: 20px;
             user-select: none;
+            color: #333;
         }
-        #canvas-container {
-            position: relative;
-            margin: 20px auto;
+        .container {
             max-width: 800px;
+            margin: 0 auto;
             background: white;
             border-radius: 8px;
             box-shadow: 0 4px 10px rgba(0,0,0,0.1);
-            padding: 20px;
+            padding: 30px;
         }
-        canvas { width: 100%; height: auto; border: 1px solid #ddd; touch-action: none; }
-        .controls { max-width: 600px; margin: 0 auto; }
-        input[type=range] { width: 100%; margin: 20px 0; height: 25px; cursor: pointer; }
+        canvas { width: 100%; height: auto; border: 1px solid #ddd; touch-action: none; margin-top: 10px; }
+        input[type=range] { width: 80%; margin: 20px 0; height: 25px; cursor: pointer; }
+        
+        /* Form Styling */
+        .form-group { margin: 15px 0; text-align: left; max-width: 400px; margin-left: auto; margin-right: auto; }
+        label { display: block; margin-bottom: 5px; font-weight: bold; }
+        select, input[type="number"] { width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px; }
+        
         button {
-            background-color: #007bff; color: white; border: none; padding: 15px 30px;
-            font-size: 18px; border-radius: 5px; cursor: pointer; transition: background 0.2s;
+            background-color: #007bff; color: white; border: none; padding: 12px 30px;
+            font-size: 18px; border-radius: 5px; cursor: pointer; transition: background 0.2s; margin-top: 10px;
         }
         button:hover { background-color: #0056b3; }
+        
         .hidden { display: none; }
         #progress { font-weight: bold; margin-top: 10px; color: #555; }
+        #instruction-text { font-size: 1.1em; color: #444; margin-bottom: 10px; min-height: 50px;}
     </style>
 </head>
 <body>
 
-    <div id="experiment-view">
-        <h1>Visual Perception Task</h1>
-        <p>Adjust the <b>bottom line</b> to match the length of the <b>top line</b>.</p>
+    <div id="start-view" class="container">
+        <h1>Visual Perception Study</h1>
+        <p>Please answer a few questions before we begin.</p>
         
-        <div id="canvas-container">
-            <canvas id="stimulusCanvas" width="800" height="500"></canvas>
+        <div class="form-group">
+            <label>Age:</label>
+            <input type="number" id="age" placeholder="e.g., 20">
         </div>
 
-        <div class="controls">
-            <input type="range" id="slider" min="50" max="750" step="1" value="400">
+        <div class="form-group">
+            <label>Gender:</label>
+            <select id="gender">
+                <option value="">Select...</option>
+                <option value="F">Female</option>
+                <option value="M">Male</option>
+                <option value="NB">Non-binary</option>
+                <option value="O">Other</option>
+            </select>
+        </div>
+
+        <div class="form-group">
+            <label>Do you wear glasses/contacts?</label>
+            <select id="vision">
+                <option value="No">No, I have normal vision</option>
+                <option value="Yes">Yes, corrected (wearing them now)</option>
+                <option value="Yes_NoWear">Yes, but NOT wearing them now</option>
+            </select>
+        </div>
+
+        <button onclick="startExperiment()">Start Experiment</button>
+    </div>
+
+    <div id="experiment-view" class="container hidden">
+        <h2 id="task-title">Task</h2>
+        <p id="instruction-text" class="instruction">Loading...</p>
+        
+        <canvas id="stimulusCanvas" width="800" height="500"></canvas>
+
+        <div>
+            <input type="range" id="slider" min="0" max="1000" step="1" value="500">
             <br>
-            <button onclick="nextTrial()">Submit Match</button>
-            <div id="progress">Trial 1 / 9</div>
+            <button id="actionBtn" onclick="nextTrial()">Next</button>
+            <div id="progress">Trial 1</div>
         </div>
     </div>
 
-    <div id="end-view" class="hidden">
-        <h1>Experiment Complete!</h1>
-        <p>Click below to submit your data.</p>
+    <div id="end-view" class="container hidden">
+        <h1>All Done!</h1>
+        <p>Thank you for participating.</p>
+        <p>Please click below to submit your results.</p>
         <button onclick="submitData()">🚀 Submit Data</button>
     </div>
 
@@ -63,100 +101,150 @@
         const ENTRY_ID = "entry.2063964930";   
         const ENTRY_DATA = "entry.1270506418"; 
 
+        // --- GLOBAL VARIABLES ---
         const canvas = document.getElementById('stimulusCanvas');
         const ctx = canvas.getContext('2d');
         const slider = document.getElementById('slider');
+        const actionBtn = document.getElementById('actionBtn');
         const progressLabel = document.getElementById('progress');
+        const instructionText = document.getElementById('instruction-text');
+        const taskTitle = document.getElementById('task-title');
         
-        const participantID = "User_" + Math.floor(Math.random() * 10000);
+        const participantID = "P" + Math.floor(Math.random() * 100000); 
         let results = [];
         let currentTrialIndex = 0;
+        let trials = [];
 
-        // --- EXPERIMENTAL DESIGN  ---
-        // We compare everything against a "Standard" baseline (Len:250, Thick:3, Fins:1, Angle:45)
-        const trials = [
-            // 1. VARY LENGTH (Size)
-            { id: 'len_150', refLen: 150, lw: 3, fins: 1, angle: 45 },
-            { id: 'len_250', refLen: 250, lw: 3, fins: 1, angle: 45 }, // Baseline
-            { id: 'len_350', refLen: 350, lw: 3, fins: 1, angle: 45 },
+        // --- SETUP TRIALS ---
+        function generateTrials() {
+            // 1. FIXED: Control Trial (Index 0)
+            const t1 = { id: 'control', type: 'match', refLen: 250, lw: 3, fins: 0, angle: 0 };
+            
+            // 2. FIXED: Baseline Standard (Index 1)
+            const t2 = { id: 'baseline', type: 'match', refLen: 250, lw: 3, fins: 1, angle: 45 };
 
-            // 2. VARY THICKNESS
-            { id: 'thick_1px', refLen: 250, lw: 1, fins: 1, angle: 45 }, // Thin
-            { id: 'thick_5px', refLen: 250, lw: 5, fins: 1, angle: 45 }, // Thick
+            // 3. NEW: Midpoint Trial (Index 2) - "Three Stylized Arrows" / Unidirectional
+            // This renders >-----> and asks user to find center
+            const t3 = { id: 'midpoint', type: 'midpoint', refLen: 400, lw: 3, fins: 1, angle: 45 };
 
-            // 3. VARY NUMBER OF LINES (Double Fins)
-            { id: 'fins_2',   refLen: 250, lw: 3, fins: 2, angle: 45 },
+            // 4. RANDOMIZED POOL
+            let pool = [
+                { id: 'len_150',   type: 'match', refLen: 150, lw: 3, fins: 1, angle: 45 },
+                { id: 'len_350',   type: 'match', refLen: 350, lw: 3, fins: 1, angle: 45 },
+                { id: 'thick_5px', type: 'match', refLen: 250, lw: 5, fins: 1, angle: 45 },
+                { id: 'fins_2',    type: 'match', refLen: 250, lw: 3, fins: 2, angle: 45 },
+                { id: 'ang_30',    type: 'match', refLen: 250, lw: 3, fins: 1, angle: 30 },
+                { id: 'ang_150',   type: 'match', refLen: 250, lw: 3, fins: 1, angle: 150 }
+            ];
 
-            // 4. VARY SHAPE (Angle)
-            { id: 'ang_30',   refLen: 250, lw: 3, fins: 1, angle: 30 },  // Acute
-            { id: 'ang_150',  refLen: 250, lw: 3, fins: 1, angle: 150 }, // Obtuse
+            pool.sort(() => Math.random() - 0.5);
 
-            // 5. CONTROL (No Fins)
-            { id: 'control',  refLen: 250, lw: 3, fins: 0, angle: 0 }
-        ];
+            // Combine: Control -> Baseline -> Midpoint -> Random Rest
+            trials = [t1, t2, t3, ...pool];
+        }
 
-        // Shuffle trials to prevent order effects
-        trials.sort(() => Math.random() - 0.5);
+        function startExperiment() {
+            const age = document.getElementById('age').value;
+            const gender = document.getElementById('gender').value;
+            const vision = document.getElementById('vision').value;
 
-        function drawArrow(y, length, trial, isInward) {
-            const cx = canvas.width / 2;
-            const startX = cx - (length / 2);
-            const endX = cx + (length / 2);
+            if (!age || !gender) { alert("Please fill in Age and Gender."); return; }
+
+            results.push(`Age:${age}`);
+            results.push(`Gen:${gender}`);
+            results.push(`Vis:${vision}`);
+
+            generateTrials();
+            
+            document.getElementById('start-view').classList.add('hidden');
+            document.getElementById('experiment-view').classList.remove('hidden');
+            
+            setupTrialUI();
+        }
+
+        function setupTrialUI() {
+            const trial = trials[currentTrialIndex];
+            
+            // Reset Slider to random position
+            slider.value = Math.floor(Math.random() * 800) + 100;
+
+            if (trial.type === 'midpoint') {
+                taskTitle.innerText = "Task: Find the Middle";
+                instructionText.innerHTML = "Drag the slider to place the <b style='color:red'>RED MARKER</b> exactly in the <b>MIDPOINT</b> of the line.";
+                // For midpoint, slider represents position (0 to 100% of line), so we map 0-1000 to 0-Length
+            } else {
+                taskTitle.innerText = "Task: Match Length";
+                instructionText.innerHTML = "Drag the slider until the <b>bottom line</b> looks exactly as long as the <b>top line</b>.";
+            }
+
+            progressLabel.innerText = `Trial ${currentTrialIndex + 1} / ${trials.length}`;
+            
+            if (currentTrialIndex === trials.length - 1) {
+                actionBtn.innerText = "Finish";
+                actionBtn.style.backgroundColor = "#28a745"; 
+            } else {
+                actionBtn.innerText = "Next";
+                actionBtn.style.backgroundColor = "#007bff"; 
+            }
+            render();
+        }
+
+        // --- DRAWING LOGIC ---
+        function drawArrow(x, y, length, trial, finType) {
+            // finType: 'outward' (> <), 'inward' (< >), 'right' (>>), 'left' (<<)
+            const startX = x - (length / 2);
+            const endX = x + (length / 2);
             const finLen = 50; 
 
             ctx.lineWidth = trial.lw;
             ctx.lineCap = "round";
             ctx.strokeStyle = "black";
             
-            // Draw Main Line
+            // Main Line
             ctx.beginPath();
             ctx.moveTo(startX, y);
             ctx.lineTo(endX, y);
             ctx.stroke();
 
-            // Draw Fins (if not control trial)
+            // Fins
             if (trial.fins > 0) {
                 const rad = trial.angle * (Math.PI / 180);
                 const dx = finLen * Math.cos(rad);
                 const dy = finLen * Math.sin(rad);
 
-                // Helper to draw a single fin set
-                const drawFinSet = (offset) => {
-                    const sx = startX + offset; // Shift x for double fins
-                    const ex = endX - offset;
-
-                    // Left Side
-                    let lDir = isInward ? 1 : -1; // Inward points IN (><), Outward points OUT (<>)
-                    // Note: Standard Muller-Lyer naming is tricky. 
-                    // "Inward pointing" usually means arrows point IN towards the line body (< >) -> Looks LONGER
-                    // "Outward pointing" usually means arrows point OUT away from line (> <) -> Looks SHORTER
-                    
-                    // Let's stick to visual logic:
-                    // If 'isInward' (Target/Bottom): Fins point like <---> (Tail)
-                    // If 'Outward' (Ref/Top): Fins point like >---< (Arrowhead)
-
-                    let dir = isInward ? 1 : -1; 
-
+                const drawFin = (cx, direction) => {
+                    // direction: 1 (point right >), -1 (point left <)
                     ctx.beginPath();
-                    // Left
-                    ctx.moveTo(sx, y);
-                    ctx.lineTo(sx + (dx * -dir), y - dy);
-                    ctx.moveTo(sx, y);
-                    ctx.lineTo(sx + (dx * -dir), y + dy);
-                    // Right
-                    ctx.moveTo(ex, y);
-                    ctx.lineTo(ex + (dx * dir), y - dy);
-                    ctx.moveTo(ex, y);
-                    ctx.lineTo(ex + (dx * dir), y + dy);
+                    ctx.moveTo(cx, y);
+                    ctx.lineTo(cx + (dx * -direction), y - dy);
+                    ctx.moveTo(cx, y);
+                    ctx.lineTo(cx + (dx * -direction), y + dy);
                     ctx.stroke();
                 };
 
-                // Draw first set
-                drawFinSet(0);
+                // Determine fin direction based on type
+                let leftDir, rightDir;
 
-                // Draw second set if "Double Fins"
+                if (finType === 'unidirectional') {
+                    // Both point RIGHT ( >-----> )
+                    leftDir = 1;  
+                    rightDir = 1; 
+                } else if (finType === 'inward') {
+                    // Tails (<--->) - Points IN
+                    leftDir = 1; 
+                    rightDir = -1;
+                } else {
+                    // Arrowheads (>---<) - Points OUT
+                    leftDir = -1;
+                    rightDir = 1;
+                }
+
+                drawFin(startX, leftDir);
+                drawFin(endX, rightDir);
+
                 if (trial.fins === 2) {
-                    drawFinSet(20); // 20px offset for second arrowhead
+                    drawFin(startX + 20, leftDir);
+                    drawFin(endX - 20, rightDir);
                 }
             }
         }
@@ -164,32 +252,65 @@
         function render() {
             ctx.clearRect(0, 0, canvas.width, canvas.height);
             const trial = trials[currentTrialIndex];
+            const cx = canvas.width / 2;
 
-            // Reference (Top): "Outward" fins (> <) -> Looks Shorter
-            drawArrow(150, trial.refLen, trial, false);
+            if (trial.type === 'midpoint') {
+                // --- MIDPOINT TASK RENDER ---
+                // Draw one line in center with Unidirectional arrows (>----->)
+                const y = 250;
+                drawArrow(cx, trial.refLen, trial, 'unidirectional');
 
-            // Adjustable (Bottom): "Inward" fins (< >) -> Looks Longer
-            const userLen = parseInt(slider.value);
-            drawArrow(350, userLen, trial, true);
+                // Calculate Marker Position from Slider (0-1000 mapped to line length)
+                const sliderPct = slider.value / 1000; 
+                // Map to visual X coordinates (startX to endX)
+                const startX = cx - (trial.refLen / 2);
+                const currentX = startX + (sliderPct * trial.refLen);
+
+                // Draw Red Marker
+                ctx.beginPath();
+                ctx.strokeStyle = "red";
+                ctx.lineWidth = 4;
+                ctx.moveTo(currentX, y - 30);
+                ctx.lineTo(currentX, y + 30);
+                ctx.stroke();
+
+            } else {
+                // --- MATCHING TASK RENDER ---
+                // Reference (Top) - Outward (> <)
+                drawArrow(cx, 150, trial.refLen, trial, 'outward');
+
+                // Adjustable (Bottom) - Inward (< >)
+                // Map slider 0-1000 to Length 50-750
+                const userLen = 50 + (slider.value / 1000) * 700;
+                drawArrow(cx, 350, userLen, trial, 'inward');
+            }
         }
 
+        // --- INTERACTION ---
         window.nextTrial = function() {
             const trial = trials[currentTrialIndex];
-            const userLen = parseInt(slider.value);
             
-            // Calculate Error %
-            const error = ((userLen - trial.refLen) / trial.refLen) * 100;
-            
-            // Save: "ConditionID:Error"
-            results.push(`${trial.id}:${error.toFixed(1)}`);
+            if (trial.type === 'midpoint') {
+                // Calculate Midpoint Error
+                // Slider goes 0-1000. True center is 500.
+                // Error = (UserVal - 500) / 500 * 100 (Percentage deviation from center)
+                const rawVal = parseInt(slider.value);
+                const error = ((rawVal - 500) / 500) * 100; 
+                
+                // If they place it towards the "tail" (left side in >-->), value < 500.
+                results.push(`${trial.id}:${error.toFixed(1)}`);
+
+            } else {
+                // Calculate Length Error
+                const userLen = 50 + (slider.value / 1000) * 700;
+                const error = ((userLen - trial.refLen) / trial.refLen) * 100;
+                results.push(`${trial.id}:${error.toFixed(1)}`);
+            }
             
             currentTrialIndex++;
-            progressLabel.innerText = `Trial ${currentTrialIndex + 1} / ${trials.length}`;
 
             if (currentTrialIndex < trials.length) {
-                // Randomize start position
-                slider.value = trial.refLen * (0.8 + Math.random() * 0.4); 
-                render();
+                setupTrialUI();
             } else {
                 document.getElementById('experiment-view').classList.add('hidden');
                 document.getElementById('end-view').classList.remove('hidden');
@@ -203,9 +324,6 @@
         };
 
         slider.addEventListener('input', render);
-        
-        // Initial Render
-        render();
     </script>
 </body>
 </html>
