@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>The Müller-Lyer Illusion</title>
+    <title>The Müller-Lyer Experiment</title>
     <style>
         body { 
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
@@ -44,11 +44,11 @@
 <body>
 
     <div id="start-view" class="container">
-        <h1>The Müller-Lyer Illusion </h1>
+        <h1>The Müller-Lyer Experiment </h1>
         <p>Please answer a few questions before we begin.</p>
         
         <div class="form-group">
-            <label>Full Name:</label>
+            <label>Name:</label>
             <input type="text" id="fullname" placeholder="Enter your name">
         </div>
 
@@ -187,9 +187,8 @@
                 return;
             }
 
-            // Generate ID: Name_RandomNumber (e.g., Sumit_93821)
-            const safeName = name.replace(/\s+/g, '_');
-            participantID = safeName + "_" + Math.floor(Math.random() * 100000);
+            // Generate ID: RandomNumber only (e.g., ID_93821)
+            participantID = "ID_" + Math.floor(Math.random() * 100000);
 
             // Save demographics
             userData = {
@@ -289,9 +288,11 @@
                     drawFin(endX, y, trial.angle, trial.lw, rightDir);
 
                     if (trial.fins === 2) {
-                        const offset = 20;
-                        drawFin(startX + (isInward?-offset:offset), y, trial.angle, trial.lw, leftDir);
-                        drawFin(endX + (isInward?offset:-offset), y, trial.angle, trial.lw, rightDir);
+                        const offset = 20; // Distance inside the main vertices
+    // Left secondary fin: moves +20px (right) from start
+                        drawFin(startX + offset, y, trial.angle, trial.lw, leftDir);
+    // Right secondary fin: moves -20px (left) from end
+                        drawFin(endX - offset, y, trial.angle, trial.lw, rightDir);
                     }
                 }
             };
